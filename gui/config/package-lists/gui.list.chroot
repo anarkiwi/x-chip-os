@@ -18,6 +18,11 @@ xterm
 pcmanfm
 dbus-x11
 network-manager-applet
+# Secret Service (keyring) for nm-applet: it stores Wi-Fi PSKs via libsecret, and
+# without a running/unlocked keyring they never persist -> NM fails on the next boot
+# with "secrets were required, but not provided". chip-desktop-configs' openbox
+# autostart starts + empty-unlocks this before launching nm-applet.
+gnome-keyring
 gmrun
 lxterminal
 netsurf-gtk
