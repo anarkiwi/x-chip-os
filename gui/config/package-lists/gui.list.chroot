@@ -26,6 +26,8 @@ gnome-keyring
 gmrun
 lxterminal
 netsurf-gtk
+geany
+chip-exit
 
 # wallpaper: chip-desktop-configs ships the CHIP image + nitrogen bg-saved.cfg and
 # runs `nitrogen --restore` from the openbox autostart to paint it.
