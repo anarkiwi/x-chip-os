@@ -33,10 +33,43 @@ jobs:
           name: ${{ matrix.flavor }}-rootfs
           path: ${{ matrix.flavor }}-rootfs.tar.gz
 
+  # alpine isn't live-build-based (no shared armhf container / lb build), and
+  # its kernel is its own ~45min-under-qemu build (x-chip-os/kernel), so it
+  # gets its own job instead of joining the matrix above. The kernel apk is
+  # cached (keyed on its build inputs) so an unrelated alpine/ or headless/
+  # change doesn't pay that cost again.
+  build-alpine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable arm/v7 emulation
+        uses: docker/setup-qemu-action@v3
+
+      - name: Cache kernel apk
+        id: kernel-cache
+        uses: actions/cache@v4
+        with:
+          path: kernel/out
+          key: alpine-kernel-${{ hashFiles('kernel/APKBUILD', 'kernel/nand.cfg', 'kernel/*.patch', 'kernel/Dockerfile', 'kernel/build-apk.sh') }}
+
+      - name: Build linux-chip apk
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        run: make -C kernel
+
+      - name: Build alpine rootfs
+        run: make -C alpine
+
+      - name: Upload rootfs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: alpine-rootfs
+          path: alpine/alpine-rootfs.tar.gz
+
   # Gather all flavors' artifacts into one tagged release so update.sh sees a
   # single "latest" os-<date> with every flavor's asset attached.
   release:
-    needs: build
+    needs: [build, build-alpine]
     runs-on: ubuntu-latest
     steps:
       - name: Fetch built rootfs tarballs

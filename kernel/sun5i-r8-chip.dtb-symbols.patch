@@ -1,0 +1,25 @@
+From: CHIP Builder <chip@localhost>
+Subject: [PATCH] ARM: dts: sun5i-r8-chip: build base dtb with __symbols__ (-@)
+
+The CHIP DIP device-tree overlays are applied by u-boot (`fdt apply`) at boot,
+which can only resolve their label references (&keyboard, &i2c0, ...) if the
+base dtb carries a __symbols__ node. Set DTC_FLAGS_sun5i-r8-chip := -@ so dtc
+emits it for this one dtb (same mechanism the Raspberry Pi dtbs use).
+
+Signed-off-by: CHIP Builder <chip@localhost>
+---
+ arch/arm/boot/dts/allwinner/Makefile | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -1,4 +1,9 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++# Build the CHIP base dtb with __symbols__ (dtc -@) so u-boot's `fdt apply` can
++# resolve overlay label references -- needed to apply DIP device-tree overlays
++# at boot from the NAND boot script.
++DTC_FLAGS_sun5i-r8-chip := -@
+ dtb-$(CONFIG_MACH_SUN4I) += \
+ 	sun4i-a10-a1000.dtb \
+ 	sun4i-a10-ba10-tvbox.dtb \

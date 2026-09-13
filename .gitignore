@@ -15,3 +15,8 @@
 */live-image-armhf.contents
 # per-flavor rootfs output (build.sh writes these at the repo root)
 /*-rootfs.tar.gz
+# alpine flavor (apk-based, not live-build): the kernel apk kernel/build-apk.sh
+# copies out, and the unpacked rootfs alpine/build.sh leaves behind. Its
+# alpine/alpine-rootfs.tar.gz is already covered by */*.tar.* above.
+/kernel/out/
+/alpine/rootfs/

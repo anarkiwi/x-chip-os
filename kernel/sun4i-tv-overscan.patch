@@ -1,0 +1,129 @@
+From: CHIP Builder <chip@localhost>
+Subject: [PATCH] drm/sun4i: tv: composite overscan compensation
+
+Restore the overscan compensation NextThing's CHIP kernel had and mainline
+dropped. With sun4i_tv.overscan_x / sun4i_tv.overscan_y set, the composite
+modes offered to fbcon/userspace shrink by that many pixels per edge; the
+encoder's atomic_check restores the full NTSC/PAL raster in adjusted_mode
+(which is what the CRTC programs into the TCON and backend canvas, so TV
+timing is unchanged), and the backend centers the layers inside it. Nothing
+is scaled -- the edges a TV hides are left black. Both default to 0, which
+keeps mainline behaviour.
+
+diff -Nru a/drivers/gpu/drm/sun4i/sun4i_backend.c b/drivers/gpu/drm/sun4i/sun4i_backend.c
+--- a/drivers/gpu/drm/sun4i/sun4i_backend.c	2026-09-12 21:04:34.585428870 -0500
++++ b/drivers/gpu/drm/sun4i/sun4i_backend.c	2026-09-12 21:05:29.657402429 -0500
+@@ -172,6 +172,20 @@
+ 				     int layer, struct drm_plane *plane)
+ {
+ 	struct drm_plane_state *state = plane->state;
++	int x = state->crtc_x;
++	int y = state->crtc_y;
++
++	/*
++	 * An encoder may run the canvas on a larger raster (adjusted_mode)
++	 * than the mode planes are laid out against -- sun4i_tv does this for
++	 * composite overscan -- so center the plane area inside it.
++	 */
++	if (state->crtc && state->crtc->state) {
++		const struct drm_crtc_state *cs = state->crtc->state;
++
++		x += (cs->adjusted_mode.hdisplay - cs->mode.hdisplay) / 2;
++		y += (cs->adjusted_mode.vdisplay - cs->mode.vdisplay) / 2;
++	}
+ 
+ 	DRM_DEBUG_DRIVER("Updating layer %d\n", layer);
+ 
+@@ -183,11 +197,9 @@
+ 					   state->crtc_h));
+ 
+ 	/* Set base coordinates */
+-	DRM_DEBUG_DRIVER("Layer coordinates X: %d Y: %d\n",
+-			 state->crtc_x, state->crtc_y);
++	DRM_DEBUG_DRIVER("Layer coordinates X: %d Y: %d\n", x, y);
+ 	regmap_write(backend->engine.regs, SUN4I_BACKEND_LAYCOOR_REG(layer),
+-		     SUN4I_BACKEND_LAYCOOR(state->crtc_x,
+-					   state->crtc_y));
++		     SUN4I_BACKEND_LAYCOOR(x, y));
+ 
+ 	return 0;
+ }
+diff -Nru a/drivers/gpu/drm/sun4i/sun4i_tv.c b/drivers/gpu/drm/sun4i/sun4i_tv.c
+--- a/drivers/gpu/drm/sun4i/sun4i_tv.c	2026-09-12 21:04:34.585386159 -0500
++++ b/drivers/gpu/drm/sun4i/sun4i_tv.c	2026-09-12 21:05:20.601347445 -0500
+@@ -391,14 +391,74 @@
+ 			   SUN4I_TVE_EN_ENABLE);
+ }
+ 
++/*
++ * Composite overscan compensation, as NextThing's CHIP kernel did it: the
++ * modes offered to fbcon/userspace are shrunk by overscan_x on the left and
++ * right and overscan_y on the top and bottom, while the TV encoder, TCON and
++ * backend canvas keep running the full NTSC/PAL raster (adjusted_mode). The
++ * backend then centers the smaller layer inside that raster, so nothing is
++ * scaled -- the edges a TV hides are simply left black.
++ */
++static unsigned int overscan_x;
++module_param(overscan_x, uint, 0444);
++MODULE_PARM_DESC(overscan_x, "Composite: pixels left black at each of the left/right edges");
++
++static unsigned int overscan_y;
++module_param(overscan_y, uint, 0444);
++MODULE_PARM_DESC(overscan_y, "Composite: lines left black at each of the top/bottom edges");
++
++static int sun4i_tv_atomic_check(struct drm_encoder *encoder,
++				 struct drm_crtc_state *crtc_state,
++				 struct drm_connector_state *conn_state)
++{
++	struct drm_display_mode *adj = &crtc_state->adjusted_mode;
++	unsigned int h = adj->hdisplay + 2 * overscan_x;
++	unsigned int v = adj->vdisplay + 2 * overscan_y;
++
++	if (!overscan_x && !overscan_y)
++		return 0;
++
++	/* Only undo a shrink get_modes applied to a 480i/576i raster. */
++	if (h != 720 || (v != 480 && v != 576))
++		return 0;
++
++	adj->hdisplay = h;
++	adj->vdisplay = v;
++	drm_mode_set_crtcinfo(adj, CRTC_INTERLACE_HALVE_V);
++
++	return 0;
++}
++
++static int sun4i_tv_comp_get_modes(struct drm_connector *connector)
++{
++	struct drm_display_mode *mode;
++	int count = drm_connector_helper_tv_get_modes(connector);
++
++	if (!overscan_x && !overscan_y)
++		return count;
++
++	list_for_each_entry(mode, &connector->probed_modes, head) {
++		if (2 * overscan_x >= mode->hdisplay / 2 ||
++		    2 * overscan_y >= mode->vdisplay / 2)
++			continue;
++
++		mode->hdisplay -= 2 * overscan_x;
++		mode->vdisplay -= 2 * overscan_y;
++		drm_mode_set_name(mode);
++	}
++
++	return count;
++}
++
+ static const struct drm_encoder_helper_funcs sun4i_tv_helper_funcs = {
++	.atomic_check	= sun4i_tv_atomic_check,
+ 	.atomic_disable	= sun4i_tv_disable,
+ 	.atomic_enable	= sun4i_tv_enable,
+ };
+ 
+ static const struct drm_connector_helper_funcs sun4i_tv_comp_connector_helper_funcs = {
+ 	.atomic_check	= drm_atomic_helper_connector_tv_check,
+-	.get_modes	= drm_connector_helper_tv_get_modes,
++	.get_modes	= sun4i_tv_comp_get_modes,
+ };
+ 
+ static void sun4i_tv_connector_reset(struct drm_connector *connector)

@@ -4,16 +4,19 @@
 # @@KERNEL_VERSION@@ replaced by flash-kernel
 # audit=0: no auditd runs, so the kernel audit subsystem would otherwise dump
 # PAM/login/sudo records via printk straight onto the console -- disable it.
-setenv bootargs 'console=tty0 console=ttyS0,115200 audit=0 ubi.mtd=4 root=ubi0:rootfs rootfstype=ubifs rw rootwait'
+setenv bootargs 'console=tty0 console=ttyS0,115200 audit=0 ubi.mtd=4 root=ubi0:rootfs rootfstype=ubifs rw rootwait sun4i_tv.overscan_x=40 sun4i_tv.overscan_y=20'
 
-# --- Composite TV standard (NTSC vs PAL) ------------------------------------
-# u-boot defaults composite-only boards (CHIP) to PAL (720x576i); the old NTC
-# image used NTSC (720x480i, overscan 40x20), which fits a TV better. Default to
-# NTSC; for PAL, comment the NTSC line and uncomment the PAL one below. NOTE:
-# boot.scr is sourced after u-boot set up its own console, so this primarily
-# steers the mode handed to the kernel at bootz -- verify on hardware.
-setenv video-mode 'sunxi:640x480-24@60,monitor=composite-ntsc,overscan_x=40,overscan_y=20'
-#setenv video-mode 'sunxi:720x576-24@50,monitor=composite-pal,overscan_x=40,overscan_y=20'
+# --- Composite overscan -----------------------------------------------------
+# sun4i_tv.overscan_x/_y (x-chip-linux-deb's sun4i-tv-overscan.patch) leave
+# that many pixels black at each left/right and top/bottom edge of the
+# composite picture, so the edges a TV hides are border, not console text.
+# 40x20 matches the old NTC image. Composite only -- inert on the PocketCHIP
+# LCD and the HDMI/VGA DIPs. Bootargs are read at bootz, so values can be
+# tried at the u-boot prompt (`setenv bootargs ...; boot`).
+#
+# u-boot's own console mode (video-mode) can't be set here: u-boot reads it at
+# video init, before this script runs, and keeps no saved environment. Its
+# NTSC/40x20 default is compiled in by x-chip-uboot.
 
 ubifsload 0x42000000 /boot/vmlinuz-@@KERNEL_VERSION@@
 ubifsload 0x43000000 /boot/dtbs/@@KERNEL_VERSION@@/sun5i-r8-chip.dtb

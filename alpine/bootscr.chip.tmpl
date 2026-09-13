@@ -1,0 +1,29 @@
+# CHIP NAND boot script (alpine flavor). Modeled on x-chip-os/headless's
+# flash-kernel-templated bootscr.chip, minus the DIP device-tree overlay
+# block: this kernel build has no DIP HDMI/VGA bridge drivers compiled in
+# (headless nand.cfg skips those), only the on-board composite TV output.
+# @@KERNEL_VERSION@@ replaced by build.sh at image-build time.
+# console=tty0 (composite/framebuffer) first so the kernel mirrors dmesg
+# there once sun4i DRM/fbcon is up; console=ttyS0 last stays the primary
+# /dev/console (serial login). audit=0: no auditd runs, so the kernel audit
+# subsystem would otherwise dump PAM/login/sudo records via printk straight
+# onto the console -- disable it.
+setenv bootargs 'console=tty0 console=ttyS0,115200 audit=0 ubi.mtd=4 root=ubi0:rootfs rootfstype=ubifs rw rootwait sun4i_tv.overscan_x=40 sun4i_tv.overscan_y=20'
+
+# --- Composite overscan -----------------------------------------------------
+# sun4i_tv.overscan_x/_y (kernel/sun4i-tv-overscan.patch) leave that many
+# pixels black at each left/right and top/bottom edge of the composite
+# picture, so the edges a TV hides are border rather than console text.
+# 40x20 matches the old NTC image. Tune them here, or try values at the
+# u-boot prompt (`setenv bootargs ...; boot`) -- bootargs are read at bootz
+# time, so they do take effect from this script.
+#
+# u-boot's OWN console mode (the video-mode env var) can't be set here: u-boot
+# reads it at video init, before this script runs, and our u-boot has no saved
+# environment (CONFIG_ENV_IS_NOWHERE), so it always falls back to its built-in
+# PAL/32x20 default. Changing that needs an x-chip-uboot change, not this file.
+
+ubifsload 0x42000000 /boot/vmlinuz-@@KERNEL_VERSION@@
+ubifsload 0x43000000 /boot/dtbs/@@KERNEL_VERSION@@/sun5i-r8-chip.dtb
+
+bootz 0x42000000 - 0x43000000

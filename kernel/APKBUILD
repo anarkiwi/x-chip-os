@@ -1,0 +1,72 @@
+# Contributor: Ben Young <benjaminzyoung@gmail.com>
+# Maintainer: Ben Young <benjaminzyoung@gmail.com>
+pkgname=linux-chip
+# Matches Alpine 3.24's own linux-lts version (apk info linux-lts) so this
+# custom build tracks the same upstream baseline the distro ships -- same
+# kernel.org source Alpine's own linux-lts APKBUILD pulls (verified: their
+# aports source= is the identical vanilla tarball, no ARM/sunxi-relevant
+# patches of their own), just with sunxi_defconfig instead of their generic
+# lts.armv7.config (see docs/kernel.md for why: a big generic base config is
+# exactly what caused the silent driver-demotion regressions when the Debian
+# side moved from sunxi_defconfig to armmp).
+pkgver=6.18.48
+pkgrel=0
+pkgdesc="NextThing CHIP (Allwinner R8 / sun5i) kernel: sunxi_defconfig + NAND/UBI"
+url="https://kernel.org"
+# armv7, not armhf: the R8 is a Cortex-A8 (ARMv7-A), and Alpine's "armhf" arch
+# is its ARMv6 (RPi1-class) target -- see docs/kernel.md / userspace-builds.md.
+arch="armv7"
+license="GPL-2.0"
+options="!check"
+
+# kernelrelease == "$pkgver-chip" (nand.cfg pins CONFIG_LOCALVERSION="-chip");
+# every install path below is derived from `make -s kernelrelease`, not
+# hardcoded, so pkgver is the only thing that needs bumping for a new kernel.
+source="
+	https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$pkgver.tar.xz
+	sun5i-r8-chip.dts.nand.patch
+	sun5i-r8-chip.dtb-symbols.patch
+	sun4i-tv-overscan.patch
+	nand.cfg
+"
+builddir="$srcdir/linux-$pkgver"
+
+prepare() {
+	# default_prepare already applies every *.patch entry in $source -- do not
+	# also patch manually here, or the second pass fails with "previously
+	# applied" (learned the hard way).
+	default_prepare
+	cd "$builddir"
+
+	export ARCH="arm"
+	make sunxi_defconfig
+	scripts/kconfig/merge_config.sh -m .config "$srcdir"/nand.cfg
+	make olddefconfig
+}
+
+build() {
+	cd "$builddir"
+	export ARCH="arm"
+	# abuild's hardening LDFLAGS are for userspace ELF binaries; the kernel
+	# build system doesn't expect them and can fail linking with them set.
+	unset LDFLAGS
+	make -j"$(nproc)" zImage dtbs modules
+}
+
+package() {
+	cd "$builddir"
+	export ARCH="arm"
+	local krel="$(make -s kernelrelease)"
+
+	install -Dm644 arch/arm/boot/zImage "$pkgdir"/boot/vmlinuz-"$krel"
+	install -Dm644 arch/arm/boot/dts/allwinner/sun5i-r8-chip.dtb \
+		"$pkgdir"/boot/dtbs/"$krel"/sun5i-r8-chip.dtb
+	install -Dm644 .config "$pkgdir"/boot/config-"$krel"
+
+	# DEPMOD=/bin/true: skip the kernel build's own depmod call (it assumes
+	# it's depmod-ing the currently-running kernel); we depmod the installed
+	# tree ourselves right after, which works for any target kernel version.
+	make modules_install INSTALL_MOD_PATH="$pkgdir" DEPMOD=/bin/true
+	rm -f "$pkgdir"/lib/modules/"$krel"/build "$pkgdir"/lib/modules/"$krel"/source
+	depmod -b "$pkgdir" "$krel"
+}
