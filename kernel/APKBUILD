@@ -22,11 +22,18 @@ options="!check"
 # kernelrelease == "$pkgver-chip" (nand.cfg pins CONFIG_LOCALVERSION="-chip");
 # every install path below is derived from `make -s kernelrelease`, not
 # hardcoded, so pkgver is the only thing that needs bumping for a new kernel.
+#
+# TODO: rtw88-rtl8723bs-6.18.patch carries the not-yet-merged rtw88 RTL8723BS
+# driver (provenance in its header). Delete it once the kernel version used
+# here includes rtw88/rtw8723bs.c upstream; the rtw88 lines in nand.cfg stay.
+# Stable/LTS kernels don't take new drivers, so this means a newer major
+# version, not a 6.18.y bump.
 source="
 	https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$pkgver.tar.xz
 	sun5i-r8-chip.dts.nand.patch
 	sun5i-r8-chip.dtb-symbols.patch
 	sun4i-tv-overscan.patch
+	rtw88-rtl8723bs-6.18.patch
 	nand.cfg
 "
 builddir="$srcdir/linux-$pkgver"

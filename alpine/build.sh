@@ -44,7 +44,7 @@ apk add --root "$ROOTFS" --repositories-file /tmp/repositories \
     alpine-base openrc \
     dbus dbus-openrc \
     connman connman-openrc wpa_supplicant \
-    linux-firmware-rtlwifi linux-firmware-rtl_bt \
+    linux-firmware-rtl_bt \
     openssh-server openssh-server-common-openrc \
     sudo nano \
     mtd-utils
@@ -71,14 +71,15 @@ sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "$ROOTFS"/etc/s
 # D-Bus policy rejection (found on hw 2026-09-10: "Rejected send message...").
 chroot "$ROOTFS" addgroup chip netdev
 
-# --- onboard wifi (r8723bs) ------------------------------------------------
-# See docs/wifi-rtl8723bs.md: driver defaults stall the SDIO bus (power-save
-# gating the clock mid-transfer) and some strict APs reject the default
-# association request. Both are fixed by these module params, independent of
-# which network manager is driving the interface.
-install -Dm644 /dev/stdin "$ROOTFS"/etc/modprobe.d/r8723bs.conf <<'EOF'
-options r8723bs rtw_power_mgnt=0 rtw_ips_mode=0 rtw_wifi_spec=1
-EOF
+# --- onboard wifi (rtw88 RTL8723BS) ----------------------------------------
+# The kernel uses rtw88's RTL8723BS driver (kernel/rtw88-rtl8723bs-6.18.patch),
+# not the staging r8723bs one. Its firmware, rtw88/rtw8723b_fw.bin (v41), is in
+# upstream linux-firmware but newer than Alpine 3.24's linux-firmware-rtw88,
+# so it's vendored here with its licence.
+# TODO: once the Alpine release this tracks ships rtw8723b_fw.bin in
+# linux-firmware-rtw88, install that package instead and delete firmware/.
+install -Dm644 firmware/rtw88/rtw8723b_fw.bin "$ROOTFS"/lib/firmware/rtw88/rtw8723b_fw.bin
+install -Dm644 firmware/LICENCE.rtlwifi_firmware.txt "$ROOTFS"/lib/firmware/LICENCE.rtlwifi_firmware.txt
 
 # --- serial console --------------------------------------------------------
 # OpenRC doesn't auto-spawn a getty from the kernel `console=` cmdline the way
