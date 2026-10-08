@@ -66,7 +66,7 @@ there.
 ## Kernel
 
 The kernel is **not** bundled here -- it's pulled from the CHIP apt repo at
-`https://nextthingco.github.io/x-chip-deb-repo/trixie`, configured in
+`https://anarkiwi.github.io/x-chip-deb-repo/trixie`, configured in
 `headless/config/archives/chip.list.{chroot,binary}` (so it installs at build
 time and the device can `apt upgrade` it later). The matching signing key ships
 alongside as `chip.key.{chroot,binary}`, so live-build registers it and apt
