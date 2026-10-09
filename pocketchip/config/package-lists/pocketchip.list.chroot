@@ -56,3 +56,7 @@ pocket-home
 # --- web browser: surf (WebKitGTK; security updates via Debian webkit2gtk). pocket-home's
 # "Get Help" button launches it. ---
 surf
+
+# --- earlyoom: kill the browser page process before the system thrashes on low
+# RAM + zram (config in includes.chroot_after_packages/etc/default/earlyoom). ---
+earlyoom
