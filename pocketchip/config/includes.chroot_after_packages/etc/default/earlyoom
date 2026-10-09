@@ -1,3 +1,3 @@
 # DUPLICATE: identical copy in the pocketchip and gui flavors -- keep these in sync (no common/ dir; see README).
-# Kill the browser page process first; never the display, launcher or system services.
-EARLYOOM_ARGS="-r 3600 --prefer ^(WebKitWebProces|WebKitNetworkPr|surf)$ --avoid ^(Xorg|pocket-home|systemd|sshd|NetworkManager|dbus-daemon|greetd)$"
+# Kill the browser page process or an emulator first; never the display, window manager, launcher or system services.
+EARLYOOM_ARGS="-r 3600 --prefer ^(WebKitWebProces|WebKitNetworkPr|surf|x64|x64sc|x128|xvic|xpet|xplus4|xcbm2|xcbm5x0|x64dtv)$ --avoid ^(Xorg|x-window-manage|awesome|pocket-home|systemd|sshd|NetworkManager|dbus-daemon|greetd)$"
