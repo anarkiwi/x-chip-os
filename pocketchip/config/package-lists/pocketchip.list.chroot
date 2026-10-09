@@ -52,3 +52,7 @@ pocketchip-batt
 pocketchip-load
 pocketchip-onboard
 pocket-home
+
+# --- web browser: surf (WebKitGTK; security updates via Debian webkit2gtk). pocket-home's
+# "Get Help" button launches it. ---
+surf

@@ -55,3 +55,7 @@ tuigreet
 # (Its integer-scale default is OFF, tuned for the 480x272 PocketCHIP panel; on a
 # larger DIP display toggle it back on in OPTIONS for clean integer scaling.)
 tic80
+
+# --- web browser: surf (WebKitGTK; security updates via Debian webkit2gtk). pocket-home's
+# "Get Help" button launches it. ---
+surf
