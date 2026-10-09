@@ -63,3 +63,7 @@ surf
 # --- earlyoom: kill the browser page process before the system thrashes on low
 # RAM + zram (config in includes.chroot_after_packages/etc/default/earlyoom). ---
 earlyoom
+
+# --- VICE (Commodore emulators). Debian ships it without the copyrighted
+# KERNAL/BASIC/CHARGEN ROMs (+dfsg); users supply their own. ---
+vice
