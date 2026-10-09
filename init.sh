@@ -22,7 +22,7 @@ lb config \
     --system normal \
     --architectures armhf \
     --distribution "trixie" \
-    --archive-areas "main non-free-firmware" \
+    --archive-areas "main contrib non-free-firmware" \
     --apt-recommends "$APT_RECOMMENDS" \
     --linux-packages none \
     --binary-images tar \
